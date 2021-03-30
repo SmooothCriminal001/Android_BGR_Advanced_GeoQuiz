@@ -9,6 +9,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.ImageButton
 import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
 import com.bignerdranch.android.geoquiz.Question
 
 //A Tag to be used to easily identify 'MainActivity' related debug logs
@@ -27,6 +28,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var questionTextView: TextView
 
+    private val quizViewModel by lazy {
+        ViewModelProvider(this).get(QuizViewModel::class.java)
+    }
+    /*
     private val questionBank = listOf(
             Question(R.string.question_australia, true),
             Question(R.string.question_oceans, true),
@@ -37,6 +42,8 @@ class MainActivity : AppCompatActivity() {
     )
 
     private var currentIndex = 0
+
+     */
 
     //Called when an activity is first setup, app is clicked on
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,15 +58,20 @@ class MainActivity : AppCompatActivity() {
         questionTextView = findViewById(R.id.question_text_view)
 
         setQuestion()
+        setButtonStatus()
 
         trueButton.setOnClickListener {view: View ->
             //Toast.makeText(this, R.string.correct_toast, Toast.LENGTH_SHORT).show()
             checkAnswer(true)
+            setAnswered()
+            displayResult()
         }
 
         falseButton.setOnClickListener {view: View ->
             //Toast.makeText(this, R.string.incorrect_toast, Toast.LENGTH_SHORT).show()
             checkAnswer(false)
+            setAnswered()
+            displayResult()
         }
 
         nextButton.setOnClickListener {view: View ->
@@ -71,13 +83,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         previousButton.setOnClickListener {view: View ->
-            currentIndex = if(currentIndex == 0){
-                questionBank.size - 1
-            }else{
-                currentIndex - 1
-            }
-
+            quizViewModel.makePrevious()
             setQuestion()
+            setButtonStatus()
         }
     }
 
@@ -112,19 +120,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun goToNextQuestion() {
-        currentIndex = (currentIndex + 1) % questionBank.size
+        quizViewModel.makeNext()
         setQuestion()
+        setButtonStatus()
     }
 
     private fun setQuestion(){
-        val questionResId = questionBank[currentIndex].questionResId
+        val questionResId = quizViewModel.currentQuestionId
         questionTextView.setText(questionResId)
     }
 
     private fun checkAnswer(userAnswer: Boolean){
-        val currentAnswer = questionBank[currentIndex].answer
+        val currentAnswer = quizViewModel.currentAnswer
 
         val messageResId = if(userAnswer == currentAnswer){
+            quizViewModel.setScore()
             R.string.correct_toast
         }else{
             R.string.incorrect_toast
@@ -137,4 +147,32 @@ class MainActivity : AppCompatActivity() {
         toast.setGravity(Gravity.TOP, 0, 0)
         toast.show()
     }
+
+    fun setButtonStatus(){
+        enableOrDisableButtons(!quizViewModel.answeredStatus)
+
+        /*
+        if(thisQuestion.isAnswered){
+            enableOrDisableButtons(false)
+        }else{
+            enableOrDisableButtons(true)
+        }*/
+    }
+
+    fun setAnswered(){
+        quizViewModel.answeredStatus = true
+        enableOrDisableButtons(false)
+    }
+
+    fun enableOrDisableButtons(status: Boolean){
+        trueButton.isEnabled = status
+        falseButton.isEnabled = status
+    }
+
+    fun displayResult(){
+        val result: Int? = quizViewModel.getResult()
+
+        if(result != null)
+            showToastAtTop(Toast.makeText(this, result.toString(), Toast.LENGTH_SHORT))
+        }
 }
